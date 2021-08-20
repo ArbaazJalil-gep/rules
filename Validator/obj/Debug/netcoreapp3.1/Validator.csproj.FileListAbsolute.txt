@@ -93,5 +93,11 @@ C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\obj\Debug\netcoreapp3.1\V
 C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\Syncfusion.Compression.Portable.dll
 C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\Syncfusion.Licensing.dll
 C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\Syncfusion.XlsIO.Portable.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\System.Data.SqlClient.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\runtimes\win-arm64\native\sni.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\runtimes\win-x64\native\sni.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\runtimes\win-x86\native\sni.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\runtimes\unix\lib\netcoreapp2.1\System.Data.SqlClient.dll
+C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\bin\Debug\netcoreapp3.1\runtimes\win\lib\netcoreapp2.1\System.Data.SqlClient.dll
 C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\obj\Debug\netcoreapp3.1\Validator.csproj.CoreCompileInputs.cache
 C:\Users\Arbaaz.Jalil\source\repos\Validator\Validator\obj\Debug\netcoreapp3.1\Validator.MvcApplicationPartsAssemblyInfo.cache

@@ -8,9 +8,26 @@ using Microsoft.AspNetCore.Mvc;
 using Syncfusion.XlsIO;
 using System.Text;
 using System.Diagnostics;
+using Syncfusion.XlsIO.Parser.Biff_Records.PivotTable;
+using System.Collections.Concurrent;
+using Newtonsoft.Json.Schema;
+using System.Data.SqlClient;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Validator.Controllers
 {
+
+    public class Rule
+    {
+        public string ConcatinatedValue { get; set; }
+        public List<string> columns { get; set; }
+    }
+    public class CustomRule
+    {
+        public string propertyName { get; set; }
+        public string value { get; set; }
+    }
+
     [ApiController]
     [Route("[controller]")]
     public class ValidateController : ControllerBase
@@ -21,61 +38,131 @@ namespace Validator.Controllers
         {
             var timer = new Stopwatch();
             timer.Start();
-            var lineitems = ConvertExcelToDataTable(@".\Data\dataset.xlsx");
+            var lineitems = ConvertExcelToDataTable(@".\Data\dataset1.xlsx");
             var rules = ConvertExcelToDataTable(@".\Data\rules.xlsx");
-
+            CreateTableAndInsertData(rules,"rules");
+            CreateTableAndInsertData(lineitems,"lineitems");
             var header = rules.Rows[0];
-
-
-            var ruleDictionary = new Dictionary<string, List<string>>();
-
-
-            for(int i = 1; i < rules.Rows.Count; i++)
+            var sqlsb = new StringBuilder();
+            sqlsb.Append("SELECT Id FROM LINEITEMS WHERE 1=1 AND");
+            for (int i = 1; i < rules.Rows.Count; i++)
             {
-                var sb = new StringBuilder();
-                var colList = new List<string>();
+
                 for (int j = 0; j < rules.Columns.Count; j++)
                 {
                     if (rules.Rows[i][j].ToString() != "*")
                     {
-                        sb.Append(rules.Rows[i][j].ToString());
-                        colList.Add(rules.Columns[j].ColumnName);
-                    }
-                }
-                ruleDictionary.Add(sb.ToString(), colList);
-                sb.Clear();
-            }
-            int ruleid = 1;
-            foreach (KeyValuePair<string, List<string>> entry in ruleDictionary)
-            {
-                Console.WriteLine(ruleid++);
-                var cols = entry.Value;
-                
-                for (int lineIdx = 1; lineIdx < lineitems.Rows.Count; lineIdx++)
-                {
-                    var line = getLineItemStringCompact(lineitems, lineIdx, cols);
-                    if (line == entry.Key)
-                    {
-                        timer.Stop();
+                        if (j > 0)
+                        {
+                            sqlsb.Append(" AND ");
+                        }
+                        else
+                        {
+                            sqlsb.Append(" (");
+                        }
 
-                        TimeSpan timeTaken2 = timer.Elapsed;
-                        string foo2 = "Time taken: " + timeTaken2.ToString(@"m\:ss\.fff");
-                        Console.WriteLine(foo2);
-                        return Ok(true);
+                        sqlsb.Append($"{rules.Columns[j].ColumnName}='{ rules.Rows[i][j].ToString()}'");
+                        if (j == rules.Columns.Count - 1)
+                            sqlsb.Append(")");
                     }
                 }
+                if(i<rules.Rows.Count-1)
+                sqlsb.Append(" OR \n");
             }
+            
+            var sqlQuery = "select * from lineitems where id not in ("+ sqlsb.ToString()+")";
+
+            var resultDt = extentions.ValidateLineItems("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012",sqlQuery);
+
             timer.Stop();
 
             TimeSpan timeTaken = timer.Elapsed;
             string foo = "Time taken: " + timeTaken.ToString(@"m\:ss\.fff");
             Console.WriteLine(foo);
-            return Ok(false);
+            return Ok(!(resultDt.Rows.Count>0));
+
+
+
+
+            //var ruleDictionary = new Dictionary<string, List<string>>();
+            //var ruleList = new List<Rule>();
+
+            //var lineChunks = lineitems.AsEnumerable().ToChunks(100)
+            //              .Select(rows => rows.CopyToDataTable());
+
+            //for (int i = 1; i < rules.Rows.Count; i++)
+            //{
+            //    var sb = new StringBuilder();
+            //    var colList = new List<string>();
+            //    for (int j = 0; j < rules.Columns.Count; j++)
+            //    {
+            //        if (rules.Rows[i][j].ToString() != "*")
+            //        {
+            //            sb.Append(rules.Rows[i][j].ToString());
+            //            colList.Add(rules.Columns[j].ColumnName);
+            //        }
+            //    }
+            //    ruleList.Add(new Rule() { ConcatinatedValue = sb.ToString(), columns = colList });
+            //    // ruleDictionary.Add(sb.ToString(), colList);
+            //    sb.Clear();
+            //}
+
+            //int ruleid = 1;
+            //var results = new ConcurrentBag<bool>();
+            //Parallel.ForEach(lineChunks, chunk => ValidateLineItems(chunk, ruleList, results));
+
+            //timer.Stop();
+
+            //TimeSpan timeTaken = timer.Elapsed;
+            //string foo = "Time taken: " + timeTaken.ToString(@"m\:ss\.fff");
+            //Console.WriteLine(foo);
+            //return Ok(!results.Contains(false));
         }
 
-        private string getLineItemStringCompact(DataTable dt, int idx,List<string> list)
+        private static void CreateTableAndInsertData(DataTable dt, string tablename)
         {
-           
+            using (SqlConnection connection = new SqlConnection("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012"))
+            {
+                connection.Open();
+                var sqlCreator = new SqlTableCreator(connection);
+                sqlCreator.DestinationTableName = tablename;
+
+                var r = sqlCreator.CreateFromDataTable(dt);
+                connection.Close();
+            }
+            dt.BulkInsert("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012", tablename);
+        }
+
+        private void ValidateLineItems(DataTable lineitems, List<Rule> ruleList, ConcurrentBag<bool> result)
+        {
+            var isLineValid = false;
+            for (int lineIdx = 1; lineIdx < lineitems.Rows.Count; lineIdx++)
+            {
+                isLineValid = false;
+                for (int ruleIdx = 0; ruleIdx < ruleList.Count; ruleIdx++)
+                {
+                    var cols = ruleList[ruleIdx].columns;
+                    var line = getLineItemStringCompact(lineitems, lineIdx, cols);
+                    if (line == ruleList[ruleIdx].ConcatinatedValue)
+                    {
+                        isLineValid = true;
+                        result.Add(true);
+                        break;
+                    }
+                }
+                if (!isLineValid)
+                {
+                    result.Add(false);
+                    break;
+                }
+            }
+
+        }
+
+
+        private string getLineItemStringCompact(DataTable dt, int idx, List<string> list)
+        {
+
             var sb = new StringBuilder();
             foreach (var col in list)
             {
@@ -88,23 +175,7 @@ namespace Validator.Controllers
             return sb.ToString();
 
         }
-        public string getLineItemString(DataTable dt, int idx)
-        {
-            var list = new List<string>(){"ORG_Field1", "ORG_Field2",  "ORG_Field3", "ORG_Field4",  "ORG_Field5",
-                "ORG_Field6",  "ORG_Field7", "ORG_Field8",  "ORG_Field9", "ORG_Field10", "ORG_Field11", "ORG_Field12",
-                "CCStructureId"  };
-            var sb = new StringBuilder();
-            foreach (var col in list)
-            {
-                if (dt.Columns.Contains(col) && dt.Rows[idx][col] != null)
-                {
-                    sb.Append(dt.Rows[idx][col].ToString());
-                }              
 
-            }
-            return sb.ToString();
-
-        }
         internal Dictionary<string, object> GetDict(DataTable dt)
         {
             return dt.AsEnumerable()
