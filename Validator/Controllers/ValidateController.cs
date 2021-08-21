@@ -38,20 +38,23 @@ namespace Validator.Controllers
         {
             var timer = new Stopwatch();
             timer.Start();
-            var lineitems = ConvertExcelToDataTable(@".\Data\dataset1.xlsx");
-            var rules = ConvertExcelToDataTable(@".\Data\rules.xlsx");
+            var lineitems = ConvertExcelToDataTable(@".\Data\dataset5000.xlsx");
+            var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
+
+
+
             CreateTableAndInsertData(rules,"rules");
             CreateTableAndInsertData(lineitems,"lineitems");
             var header = rules.Rows[0];
             var sqlsb = new StringBuilder();
             sqlsb.Append("SELECT Id FROM LINEITEMS WHERE 1=1 AND");
-            for (int i = 1; i < rules.Rows.Count; i++)
+            for (int i = 1; i < lineitems.Rows.Count; i++)
             {
 
-                for (int j = 0; j < rules.Columns.Count; j++)
+                for (int j = 0; j < lineitems.Columns.Count; j++)
                 {
-                    if (rules.Rows[i][j].ToString() != "*")
-                    {
+                    if (lineitems.Rows[i][j].ToString() == "*")
+                        continue;
                         if (j > 0)
                         {
                             sqlsb.Append(" AND ");
@@ -60,13 +63,16 @@ namespace Validator.Controllers
                         {
                             sqlsb.Append(" (");
                         }
+                        
+                        sqlsb.Append($"{lineitems.Columns[j].ColumnName}='{ lineitems.Rows[i][j].ToString()}'");
 
-                        sqlsb.Append($"{rules.Columns[j].ColumnName}='{ rules.Rows[i][j].ToString()}'");
-                        if (j == rules.Columns.Count - 1)
+                        if (j == lineitems.Columns.Count - 1)
                             sqlsb.Append(")");
-                    }
+                    
                 }
-                if(i<rules.Rows.Count-1)
+                sqlsb.Append(")");
+
+                if (i<rules.Rows.Count-1)
                 sqlsb.Append(" OR \n");
             }
             
