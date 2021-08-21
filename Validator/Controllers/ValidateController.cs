@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using Newtonsoft.Json.Schema;
 using System.Data.SqlClient;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Trie;
 
 namespace Validator.Controllers
 {
@@ -36,51 +37,77 @@ namespace Validator.Controllers
         [HttpGet]
         public IActionResult Validate()
         {
+            
+            var lineitems = ConvertExcelToDataTable(@".\Data\dataset5000.xlsx");
+            var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
             var timer = new Stopwatch();
             timer.Start();
-            var lineitems = ConvertExcelToDataTable(@".\Data\dataset1.xlsx");
-            var rules = ConvertExcelToDataTable(@".\Data\rules.xlsx");
-            CreateTableAndInsertData(rules,"rules");
-            CreateTableAndInsertData(lineitems,"lineitems");
-            var header = rules.Rows[0];
-            var sqlsb = new StringBuilder();
-            sqlsb.Append("SELECT Id FROM LINEITEMS WHERE 1=1 AND");
-            for (int i = 1; i < rules.Rows.Count; i++)
+            SuffixTrie suffixTrie = new SuffixTrie(rules);
+            var list = new List<int>();
+            for(int i = 0; i< lineitems.Rows.Count; i++)
             {
-
-                for (int j = 0; j < rules.Columns.Count; j++)
-                {
-                    if (rules.Rows[i][j].ToString() != "*")
-                    {
-                        if (j > 0)
-                        {
-                            sqlsb.Append(" AND ");
-                        }
-                        else
-                        {
-                            sqlsb.Append(" (");
-                        }
-
-                        sqlsb.Append($"{rules.Columns[j].ColumnName}='{ rules.Rows[i][j].ToString()}'");
-                        if (j == rules.Columns.Count - 1)
-                            sqlsb.Append(")");
-                    }
-                }
-                if(i<rules.Rows.Count-1)
-                sqlsb.Append(" OR \n");
+                var isLineValid = suffixTrie.Contains(lineitems, i);
+                if(isLineValid)
+                list.Add(i);
             }
-            
-            var sqlQuery = "select * from lineitems where id not in ("+ sqlsb.ToString()+")";
 
-            var resultDt = extentions.ValidateLineItems("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012",sqlQuery);
 
             timer.Stop();
 
             TimeSpan timeTaken = timer.Elapsed;
             string foo = "Time taken: " + timeTaken.ToString(@"m\:ss\.fff");
             Console.WriteLine(foo);
-            return Ok(!(resultDt.Rows.Count>0));
 
+
+
+
+
+
+
+
+
+
+
+
+            //CreateTableAndInsertData(rules,"rules");
+            //CreateTableAndInsertData(lineitems,"lineitems");
+            //var header = rules.Rows[0];
+            //var sqlsb = new StringBuilder();
+            //sqlsb.Append("SELECT Id FROM LINEITEMS WHERE 1=1 AND");
+            //for (int i = 1; i < lineitems.Rows.Count; i++)
+            //{
+
+            //    for (int j = 0; j < lineitems.Columns.Count; j++)
+            //    {
+            //        if (lineitems.Rows[i][j].ToString() == "*")
+            //            continue;
+            //            if (j > 0)
+            //            {
+            //                sqlsb.Append(" AND ");
+            //            }
+            //            else
+            //            {
+            //                sqlsb.Append(" (");
+            //            }
+
+            //            sqlsb.Append($"{lineitems.Columns[j].ColumnName}='{ lineitems.Rows[i][j].ToString()}'");
+
+            //            if (j == lineitems.Columns.Count - 1)
+            //                sqlsb.Append(")");
+
+            //    }
+            //    sqlsb.Append(")");
+
+            //    if (i<rules.Rows.Count-1)
+            //    sqlsb.Append(" OR \n");
+            //}
+
+            //var sqlQuery = "select * from lineitems where id not in ("+ sqlsb.ToString()+")";
+
+            //var resultDt = extentions.ValidateLineItems("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012",sqlQuery);
+
+            //return Ok(!(resultDt.Rows.Count>0));
+            return Ok(true);
 
 
 
