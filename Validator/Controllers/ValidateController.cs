@@ -42,14 +42,18 @@ namespace Validator.Controllers
             var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
             var timer = new Stopwatch();
             timer.Start();
+       
             SuffixTrie suffixTrie = new SuffixTrie(rules);
             var list = new List<int>();
-            for(int i = 0; i< lineitems.Rows.Count; i++)
+            for (int i = 0; i < lineitems.Rows.Count; i++)
             {
                 var isLineValid = suffixTrie.Contains(lineitems, i);
-                if(isLineValid)
-                list.Add(i);
+                if (isLineValid)
+                    list.Add(i);
             }
+
+
+ 
 
 
             timer.Stop();
