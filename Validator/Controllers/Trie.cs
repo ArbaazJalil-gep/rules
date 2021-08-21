@@ -25,11 +25,10 @@ namespace Trie
         {
             for (int i = 0; i < ruleDt.Rows.Count; i++)
             {
-                for (int j = 0; j < ruleDt.Columns.Count; j++)
-                {
 
-                    insertSubstringStartingAt(j, i, ruleDt);
-                }
+                Console.WriteLine(i);
+                insertSubstringStartingAt(0, i, ruleDt);
+                 
             }
         }
         public void insertSubstringStartingAt(int j, int i, DataTable ruleDt)

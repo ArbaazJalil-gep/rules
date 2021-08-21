@@ -14,10 +14,11 @@ using Newtonsoft.Json.Schema;
 using System.Data.SqlClient;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Trie;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Validator.Controllers
 {
-
     public class Rule
     {
         public string ConcatinatedValue { get; set; }
@@ -29,39 +30,80 @@ namespace Validator.Controllers
         public string value { get; set; }
     }
 
+
+
     [ApiController]
     [Route("[controller]")]
     public class ValidateController : ControllerBase
     {
+        private IMemoryCache cache;
+
+        public ValidateController(IMemoryCache cache)
+        {
+            this.cache = cache;
+        }
+
+        private void writeToFile(string json)
+        {
+             
+            using (StreamWriter writer = new StreamWriter(@".\Serialized\trie.txt"))
+            {
+                writer.WriteLine(json);
+            }
+            // Read a file  
+            //string readText = System.IO.File.ReadAllText(@".\Serialized\trie.txt");
+            //Console.WriteLine(readText);
+        }
+        private SuffixTrie LoadFromFile()
+        {
+            string readText = System.IO.File.ReadAllText(@".\Serialized\trie.txt");
+            return JsonSerializer.Deserialize<SuffixTrie>(readText);
+        }
+
+
+        [HttpGet("CreateCache")]
+        public string Get()
+        {
+            var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
+            SuffixTrie suffixTrie = new SuffixTrie(rules);
+            cache.Set("rules", suffixTrie);
+            return "done";
+        }
+
 
         [HttpGet]
         public IActionResult Validate()
         {
-            
+         
             var lineitems = ConvertExcelToDataTable(@".\Data\dataset5000.xlsx");
-            var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
+           // var rules = ConvertExcelToDataTable(@".\Data\2MRules.xlsx");
+
+            var timer2= new Stopwatch();
+            timer2.Start();
+            SuffixTrie suffixTrie =(SuffixTrie) cache.Get("rules");// new SuffixTrie(rules);
+            timer2.Stop();
+
+            TimeSpan timeTaken2 = timer2.Elapsed;
+            string foo2 = "Time taken: " + timeTaken2.ToString(@"m\:ss\.fff");
+            Console.WriteLine(foo2);
+
+
+            var list = new List<int>();
             var timer = new Stopwatch();
             timer.Start();
-       
-            SuffixTrie suffixTrie = new SuffixTrie(rules);
-            var list = new List<int>();
             for (int i = 0; i < lineitems.Rows.Count; i++)
             {
                 var isLineValid = suffixTrie.Contains(lineitems, i);
-                if (isLineValid)
+                if (!isLineValid)
                     list.Add(i);
             }
-
-
- 
-
 
             timer.Stop();
 
             TimeSpan timeTaken = timer.Elapsed;
             string foo = "Time taken: " + timeTaken.ToString(@"m\:ss\.fff");
             Console.WriteLine(foo);
-
+            return Ok(list);
 
 
 
@@ -111,7 +153,7 @@ namespace Validator.Controllers
             //var resultDt = extentions.ValidateLineItems("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=test;User Id=sa;Password=Admin@2012",sqlQuery);
 
             //return Ok(!(resultDt.Rows.Count>0));
-            return Ok(true);
+
 
 
 
